@@ -19,9 +19,6 @@ public class RouteStrategyFactory {
 			case "hash":
 				selector = new HashRouteStrategy();
 				break;
-			case "local":
-				selector = new LocalRouteStrategy();
-				break;
 			default:
 				selector = (RouteStrategy) ClassUtils.newInstance(type);
 				break;

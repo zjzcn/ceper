@@ -13,6 +13,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.github.zjzcn.ceper.filter.FilterChain;
+import com.github.zjzcn.ceper.monitor.MonitorManager;
+import com.github.zjzcn.ceper.node.NodeManager;
 import com.github.zjzcn.ceper.processor.Processor;
 import com.github.zjzcn.ceper.processor.ProcessorFactory;
 import com.github.zjzcn.ceper.router.Router;
@@ -41,7 +43,6 @@ public class Engine {
 	private final Map<String, SourceRunner> sourceRunners = new HashMap<String, SourceRunner>();
 	private final Map<String, SinkRunner> sinkRunners = new HashMap<String, SinkRunner>();
 
-	private RuleManager ruleManager;
 	private Router router;
 	
 	public static void main(String[] args) {
@@ -91,8 +92,8 @@ public class Engine {
 	}
 
 	public void config(Config rootConfig) {
-		ruleManager = RuleManager.getInstance();
-		ruleManager.config(rootConfig);
+		MonitorManager.config(rootConfig);
+		RuleManager.config(rootConfig);
 		
 		router = new Router();
 		router.config(rootConfig);
@@ -142,7 +143,7 @@ public class Engine {
 	}
 
 	public void start() {
-		ruleManager.start();
+		RuleManager.start();
 		
 		for (Entry<String, Processor> entry : processors.entrySet()) {
 			try {
@@ -162,6 +163,12 @@ public class Engine {
 
 		router.start();
 		
+		int routePort = router.getRoutePort();
+		NodeManager.start();
+		NodeManager.registerCurrentNode(routePort);
+		
+		MonitorManager.start();
+		
 		for (Entry<String, SourceRunner> entry : sourceRunners.entrySet()) {
 			try {
 				entry.getValue().start();
@@ -173,7 +180,6 @@ public class Engine {
 
 	public void stop() {
 		router.stop();
-		ruleManager.stop();
 		
 		for (Entry<String, SourceRunner> entry : sourceRunners.entrySet()) {
 			try {
@@ -198,6 +204,9 @@ public class Engine {
 				logger.error("Error while Stoping Processor {}", entry.getValue(), e);
 			}
 		}
+		
+		MonitorManager.stop();
+		RuleManager.stop();
 	}
 
 }

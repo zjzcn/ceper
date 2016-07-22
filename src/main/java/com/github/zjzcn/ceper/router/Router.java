@@ -3,17 +3,16 @@ package com.github.zjzcn.ceper.router;
 import java.net.BindException;
 import java.util.Collection;
 import java.util.Set;
-import java.util.concurrent.CopyOnWriteArraySet;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.github.zjzcn.ceper.common.Constants;
 import com.github.zjzcn.ceper.event.SourceEvent;
+import com.github.zjzcn.ceper.node.Node;
+import com.github.zjzcn.ceper.node.NodeListener;
+import com.github.zjzcn.ceper.node.NodeManager;
 import com.github.zjzcn.ceper.processor.Processor;
-import com.github.zjzcn.ceper.router.node.Node;
-import com.github.zjzcn.ceper.router.node.NodeListener;
-import com.github.zjzcn.ceper.router.node.NodeManager;
 import com.github.zjzcn.ceper.router.route.RouteStrategy;
 import com.github.zjzcn.ceper.router.route.RouteStrategyFactory;
 import com.github.zjzcn.ceper.router.selector.ProcessorSelector;
@@ -37,13 +36,10 @@ public class Router {
 	
 	private ProcessorSelector selector;
 	private Collection<Processor> processors;
-	private NodeManager nodeManager;
 	
 	private Server server;
 	
 	private int routePort = Constants.DEFAULT_ROUTE_PORT;
-	
-	private Set<Node> cachedNodes = new CopyOnWriteArraySet<>();
 	
 	private NodeListener listener;
 	
@@ -58,8 +54,7 @@ public class Router {
 		selector = SelectorFactory.create(selectorType);
 		selector.config(selectorConfig);
 		
-		nodeManager = new NodeManager();
-		nodeManager.config(config);
+		NodeManager.config(config);
 	}
 	
 	public void start() {
@@ -88,34 +83,24 @@ public class Router {
 			}
 		}
 		
-		nodeManager.setRoutePort(routePort);
-		nodeManager.start();
-		cachedNodes.addAll(nodeManager.getNodes());
-		listener = nodeManager.subscribe(new NodeListener() {
-			@Override
-			public void childhanged(Set<Node> nodes) {
-				cachedNodes.clear();
-				cachedNodes.addAll(nodes);
-			}
-		});
-		
 		selector.start();
 	}
 	
 	public void stop() {
-		nodeManager.unsubscribe(listener);
+		NodeManager.unsubscribe(listener);
 		server.close();
 	}
 	
 	public void proccess(SourceEvent event) {
 		Assert.notNull(event, "Event must not be null");
 
-		Node node = routeStrategy.route(event, cachedNodes);
+		Set<Node> nodes = NodeManager.getNodes();
+		Node node = routeStrategy.route(event, nodes);
 		if(node == null) {
-			logger.debug("Not node for routing, routeStrategy={}, cachedNodes={}", routeStrategy.getClass().getSimpleName(), cachedNodes);
+			logger.debug("Not node for routing, routeStrategy={}, nodes={}", routeStrategy.getClass().getSimpleName(), nodes);
 			return;
 		}
-		if(node.isCurrent()) {
+		if(NodeManager.isCurrentNode(node)) {
 			processInternal(event);
 		} else {
 			ClientPool pool = ClientPool.getPool(node.getHost(), node.getPort());
@@ -137,6 +122,10 @@ public class Router {
 
 	public void setProcessors(Collection<Processor> processors) {
 		this.processors = processors;
+	}
+	
+	public int getRoutePort() {
+		return routePort;
 	}
 	
 	private void processInternal(SourceEvent event) {

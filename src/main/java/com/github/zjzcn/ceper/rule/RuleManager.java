@@ -22,29 +22,19 @@ import com.typesafe.config.Config;
 
 public class RuleManager {
 
-	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+	private static final Logger logger = LoggerFactory.getLogger(RuleManager.class);
 
-	private String zkServers = Constants.DEFAULT_ZK_SERVERS;
+	private static String zkServers = Constants.DEFAULT_ZK_SERVERS;
 
-	private String clusterName = Constants.DEFAULT_CLUSTER_NAME;
+	private static String clusterName = Constants.DEFAULT_CLUSTER_NAME;
 
-	private final Set<RuleListener> listeners = new CopyOnWriteArraySet<RuleListener>();
+	private static Set<RuleListener> listeners = new CopyOnWriteArraySet<RuleListener>();
 
-	private ZkClient zkClient;
+	private static ZkClient zkClient;
 
-	private PathChildrenCache cache;
+	private static PathChildrenCache cache;
 	
-	private static RuleManager instance = new RuleManager();
-
-	private RuleManager() {
-
-	}
-
-	public static RuleManager getInstance() {
-		return instance;
-	}
-
-	public void config(Config config) {
+	public static void config(Config config) {
 		if (config.hasPath("cluster_name")) {
 			clusterName = config.getString("cluster_name");
 		}
@@ -53,7 +43,7 @@ public class RuleManager {
 		}
 	}
 
-	public void start() {
+	public static void start() {
 		logger.info("Starting RuleManager.");
 		zkClient = ZkClient.getClient(zkServers);
 
@@ -81,20 +71,20 @@ public class RuleManager {
 		logger.info("Started RuleManager.");
 	}
 
-	public void stop() {
+	public static void stop() {
 		listeners.clear();
 	}
 
-	public RuleListener subscribe(RuleListener listener) {
+	public static RuleListener subscribe(RuleListener listener) {
 		listeners.add(listener);
 		return listener;
 	}
 
-	public void unsubscribe(RuleListener listener) {
+	public static void unsubscribe(RuleListener listener) {
 		listeners.remove(listener);
 	}
 
-	public Set<Rule> getRules() {
+	public static Set<Rule> getRules() {
 		Set<Rule> list = new HashSet<>();
 		List<ChildData> childDatas = cache.getCurrentData();
 		for (ChildData childData : childDatas) {
@@ -105,7 +95,7 @@ public class RuleManager {
 		return list;
 	}
 
-	private void notifyListeners() {
+	private static void notifyListeners() {
 		Set<Rule> rules = getRules();
 		for (RuleListener listener : listeners) {
 			try {
@@ -116,7 +106,7 @@ public class RuleManager {
 		}
 	}
 
-	private Rule convertRule(ChildData childData) {
+	private static Rule convertRule(ChildData childData) {
 		String data = new String(childData.getData());
 		Rule rule = JsonUtils.toBean(data, Rule.class);
 		return rule;

@@ -54,8 +54,7 @@ public class EsperProcessor extends AbstractProcessor {
 		esperProvider = EPServiceProviderManager.getDefaultProvider();
 		final EPAdministrator admin = esperProvider.getEPAdministrator();
 
-		RuleManager ruleManager = RuleManager.getInstance();
-		ruleManager.subscribe(new RuleListener() {
+		RuleManager.subscribe(new RuleListener() {
 			@Override
 			public void childhanged(Set<Rule> rules) {
 				addRulesToEsper(admin, rules);
@@ -63,7 +62,7 @@ public class EsperProcessor extends AbstractProcessor {
 
 		});
 		
-		Set<Rule> rules = ruleManager.getRules();
+		Set<Rule> rules = RuleManager.getRules();
 		addRulesToEsper(admin, rules);
 		logger.info("Started EsperProcessor, name={}.", getName());
 	}

@@ -17,7 +17,7 @@ public class SelectorFactory {
 			ProcessorSelector selector = null;
 			switch (type) {
 			case "dynamic":
-				selector = new DynamicTypeSelector();
+				selector = new DynamicDataTypeSelector();
 				break;
 			case "static":
 				selector = new StaticSourceSelector();

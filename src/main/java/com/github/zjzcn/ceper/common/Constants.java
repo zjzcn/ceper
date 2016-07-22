@@ -10,15 +10,20 @@ public class Constants {
 	public static final String PATH_SEPARATOR = "/";
 	public static final String ZK_NODE_PATH = "/node";
 	public static final String ZK_RULE_PATH = "/rule";
+	public static final String ZK_MONITOR_PATH = "/monitor";
 	
-	// endpoint path: /ceper/clusterName/node
+	// node path: /ceper/clusterName/node
 	public static String nodePath(String clusterName) {
 		return ZK_ROOT + PATH_SEPARATOR + clusterName  + ZK_NODE_PATH;
 	}
 	
-	// epl path: /ceper/clusterName/ruel
+	// rule path: /ceper/clusterName/rule
 	public static String rulePath(String clusterName) {
 		return ZK_ROOT + PATH_SEPARATOR + clusterName  + ZK_RULE_PATH;
 	}
 	
+	// monitor path: /ceper/clusterName/monitor
+	public static String monitorPath(String clusterName) {
+		return ZK_ROOT + PATH_SEPARATOR + clusterName  + ZK_MONITOR_PATH;
+	}
 }
