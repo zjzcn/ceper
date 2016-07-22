@@ -1,4 +1,4 @@
-package com.github.zjzcn.ceper.router.node;
+package com.github.zjzcn.ceper.node;
 
 import com.github.zjzcn.ceper.utils.BaseBean;
 
@@ -9,7 +9,6 @@ public class Node extends BaseBean {
 	private String clusterName;
 	private String host;
 	private int port;
-	private transient boolean current;
 	
 	public String getClusterName() {
 		return clusterName;
@@ -33,14 +32,6 @@ public class Node extends BaseBean {
 
 	public void setPort(int port) {
 		this.port = port;
-	}
-
-	public boolean isCurrent() {
-		return current;
-	}
-
-	public void setCurrent(boolean current) {
-		this.current = current;
 	}
 
 	public String toNodeId() {

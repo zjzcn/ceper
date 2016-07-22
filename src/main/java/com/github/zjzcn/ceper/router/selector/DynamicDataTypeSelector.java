@@ -16,11 +16,11 @@ import com.github.zjzcn.ceper.rule.RuleListener;
 import com.github.zjzcn.ceper.rule.RuleManager;
 import com.typesafe.config.Config;
 
-public class DynamicTypeSelector implements ProcessorSelector {
+public class DynamicDataTypeSelector implements ProcessorSelector {
 
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	
-	// Map<metricType, processorName>
+	// Map<dataType, processorName>
 	private Map<String, String> mappings = new ConcurrentHashMap<String, String>();
 		
 	private RuleListener listener;
@@ -31,8 +31,7 @@ public class DynamicTypeSelector implements ProcessorSelector {
 	
 	@Override
 	public void start() {
-		RuleManager ruleManager = RuleManager.getInstance();
-		listener = ruleManager.subscribe(new RuleListener() {
+		listener = RuleManager.subscribe(new RuleListener() {
 			@Override
 			public void childhanged(Set<Rule> rules) {
 				mappings.clear();
@@ -40,14 +39,13 @@ public class DynamicTypeSelector implements ProcessorSelector {
 			}
 		});
 		mappings.clear();
-		Set<Rule> rules = ruleManager.getRules();
+		Set<Rule> rules = RuleManager.getRules();
 		addMappings(rules);
 	}
 
 	@Override
 	public void stop() {
-		RuleManager ruleManager = RuleManager.getInstance();
-		ruleManager.unsubscribe(listener);
+		RuleManager.unsubscribe(listener);
 		mappings.clear();
 	}
 	

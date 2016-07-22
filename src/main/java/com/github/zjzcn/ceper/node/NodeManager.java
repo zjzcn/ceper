@@ -1,4 +1,4 @@
-package com.github.zjzcn.ceper.router.node;
+package com.github.zjzcn.ceper.node;
 
 import java.util.HashSet;
 import java.util.List;
@@ -16,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.github.zjzcn.ceper.common.Constants;
+import com.github.zjzcn.ceper.utils.Assert;
 import com.github.zjzcn.ceper.utils.JsonUtils;
 import com.github.zjzcn.ceper.utils.NetUtils;
 import com.github.zjzcn.ceper.utils.ZkClient;
@@ -23,24 +24,21 @@ import com.typesafe.config.Config;
 
 public class NodeManager {
 
-	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+	private static final Logger logger = LoggerFactory.getLogger(NodeManager.class);
 
-	private final Set<NodeListener> listeners = new CopyOnWriteArraySet<NodeListener>();
+	private static final Set<NodeListener> listeners = new CopyOnWriteArraySet<NodeListener>();
 
-	private int routePort;
+	private static Node currentNode;
+
+	private static ZkClient zkClient;
+
+	private static String clusterName;
 	
-	private Node currentNode;
+	private static String zkServers;
 
-	private ZkClient zkClient;
-
-	private String clusterName;
+	private static PathChildrenCache cache;
 	
-	private String zkServers;
-
-	private PathChildrenCache cache;
-	
-
-	public void config(Config config) {
+	public static void config(Config config) {
 		if (config.hasPath("cluster_name")) {
 			clusterName = config.getString("cluster_name");
 		} else {
@@ -54,11 +52,10 @@ public class NodeManager {
 		}
 	}
 
-	public void start() {
+	public static void start() {
 		logger.info("Starting NodeManager.");
 
 		zkClient = ZkClient.getClient(zkServers);
-		
 		// add watch
 		final String path = Constants.nodePath(clusterName);
 		cache = zkClient.getChildrenCache(path);
@@ -67,7 +64,7 @@ public class NodeManager {
 			public void childEvent(CuratorFramework client, PathChildrenCacheEvent event) throws Exception {
 				logger.info("PathChildrenCacheEvent fired, path={}, eventType={}", path, event.getType());
 				if(event.getType() == Type.CONNECTION_RECONNECTED && currentNode != null) {
-					registerCurrentNode();
+					register(currentNode);
 					cache.rebuild();
 				}
 				notifyListeners();
@@ -78,15 +75,29 @@ public class NodeManager {
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
-		currentNode = registerCurrentNode();
 		logger.info("Started NodeManager.");
 	}
 
-	public void stop() {
+	public static void stop() {
 		listeners.clear();
 	}
 
-	public void register(Node node) {
+	public static void registerCurrentNode(int nodePort) {
+		String host = NetUtils.getLocalAddress().getHostAddress();
+		currentNode = new Node();
+		currentNode.setClusterName(clusterName);
+		currentNode.setHost(host);
+		currentNode.setPort(nodePort);
+		register(currentNode);
+	}
+	
+	public static boolean isCurrentNode(Node node) {
+		Assert.notNull(currentNode);
+		Assert.notNull(node);
+		return node.equals(currentNode);
+	}
+	
+	public static void register(Node node) {
 		String nodeData = JsonUtils.toJsonString(node);
 		String nodePath = Constants.nodePath(clusterName);
 		if (!zkClient.exists(nodePath)) {
@@ -100,7 +111,7 @@ public class NodeManager {
 		logger.info("Node registered to zookeeper, path={}, node={}", tmpNode, nodeData);
 	}
 
-	public void unregister(Node node) {
+	public static void unregister(Node node) {
 		String nodePath = Constants.nodePath(clusterName);
 		if (!zkClient.exists(nodePath)) {
 			return;
@@ -109,25 +120,25 @@ public class NodeManager {
 		zkClient.delete(tmpNode);
 	}
 
-	public NodeListener subscribe(NodeListener listener) {
+	public static NodeListener subscribe(NodeListener listener) {
 		listeners.add(listener);
 		return listener;
 	}
 
-	public void unsubscribe(NodeListener listener) {
+	public static void unsubscribe(NodeListener listener) {
 		listeners.remove(listener);
 	}
 
-	public void setRoutePort(int port) {
-		this.routePort = port; 
-	}
+//	public static void setRoutePort(int port) {
+//		routePort = port; 
+//	}
 
 	
-	public Node getCurrentNode() {
+	public static Node getCurrentNode() {
 		return currentNode;
 	}
 
-	public Set<Node> getNodes() {
+	public static Set<Node> getNodes() {
 		Set<Node> nodes = new HashSet<>();
 		List<ChildData> childDatas = cache.getCurrentData();
 		for (ChildData childData : childDatas) {
@@ -135,23 +146,12 @@ public class NodeManager {
 			nodes.add(n);
 		}
 		nodes.add(currentNode);
-		logger.info("Get nodes form cache, nodes={}", nodes);
 		return nodes;
 	}
 	
-	private Node registerCurrentNode() {
-		String host = NetUtils.getLocalAddress().getHostAddress();
-		Node currentNode = new Node();
-		currentNode.setCurrent(true);
-		currentNode.setClusterName(clusterName);
-		currentNode.setHost(host);
-		currentNode.setPort(routePort);
-		this.register(currentNode);
-		return currentNode;
-	}
-
-	private void notifyListeners() {
+	private static void notifyListeners() {
 		Set<Node> nodes = getNodes();
+		logger.debug("Get nodes form cache, nodes={}", nodes);
 		for (NodeListener listener : listeners) {
 			try {
 				listener.childhanged(nodes);
@@ -161,7 +161,7 @@ public class NodeManager {
 		}
 	}
 
-	private Node convertNode(ChildData childData) {
+	private static Node convertNode(ChildData childData) {
 		String data = new String(childData.getData());
 		Node node = JsonUtils.toBean(data, Node.class);
 		return node;

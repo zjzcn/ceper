@@ -15,8 +15,8 @@ public class SourceEvent  extends BaseBean {
 	private String sourceName;
 	private String dataType;
 	private String hashTag;
-	private Map<String, Object> data;
 	private long timestamp;
+	private Map<String, Object> data;
 	Map<String, Object> attachments;
 
 	public SourceEvent() {

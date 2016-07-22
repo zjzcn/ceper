@@ -2,6 +2,7 @@ package com.github.zjzcn.ceper.filter;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,6 +24,8 @@ public class FilterChain {
 	private Source source;
 	
 	private Router router;
+	
+	private AtomicLong sourceCounter = new AtomicLong();
 	
 	public FilterChain(Source source, Router router) {
 		this.source = source;
@@ -46,27 +49,20 @@ public class FilterChain {
 				throw new RuntimeException("Unable to create Converter, type: " + type, ex);
 			}
 		} else {
+			logger.info("Has not source converter, default=JsonConverter");
 			converter = new JsonConverter();
 		}
-		try {
+		if(config.hasPath("filters") && !config.getConfigList("filters").isEmpty()) {
 			List<? extends Config> filterConfigs = config.getConfigList("filters");
 			for(Config filterConfig : filterConfigs) {
 				String type = filterConfig.getString("type");
 				logger.info("Creating source filter, type {}", type);
-				Filter filter = null;
-				switch (type) {
-				case "timestamp":
-					//						filter = new ReplicatingChannelSelector();
-					break;
-				default:
-					filter = (Filter) ClassUtils.newInstance(type);
-					break;
-				}
+				Filter filter = (Filter) ClassUtils.newInstance(type);
 				filter.config(filterConfig);
 				filters.add(filter);
 			}
-		} catch (Exception e) {
-			logger.warn("Has not source filters.");
+		} else {
+			logger.info("Has not source filters.");
 		}
 	}
 
